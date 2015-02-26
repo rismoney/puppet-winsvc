@@ -4,17 +4,12 @@ Puppet::Type.type(:winsvc).provide(:winsvc) do
   confine    :operatingsystem => :windows
   defaultfor :operatingsystem => :windows
 
-  C:\Windows\Microsoft.NET\Framework64\v4.0.30319
-  
   if Puppet.features.microsoft_windows?
 
   if ENV.has_key?('ProgramFiles(x86)')
-      commands :winsvc => "#{Dir::WINDOWS}\\Microsoft.NET\\Framework64\\v4.0.30319\\installutil.exe"
-      commands :sc => "#{Dir::WINDOWS}\\sysnative\\sc.exe"
-    else
-      commands :winsvc => "#{Dir::WINDOWS}\\Microsoft.NET\\Framework\\v4.0.30319\\installutil.exe"
-      commands :sc => "#{Dir::WINDOWS}\\system32\\sc.exe"
-    end
+   commands :sc => "#{Dir::WINDOWS}\\sysnative\\sc.exe"
+  else
+   commands :sc => "#{Dir::WINDOWS}\\system32\\sc.exe"
   end
 
   def self.prefetch(resources)
@@ -38,23 +33,23 @@ Puppet::Type.type(:winsvc).provide(:winsvc) do
   end
 
   def create
-    if ENV.has_key?('ProgramFiles(x86)')
-      winsvc_cmd = "#{Dir::WINDOWS}\\Microsoft.NET\\Framework64\\v4.0.30319\\installutil.exe"
+    basedir = "#{Dir::WINDOWS}\\Microsoft.NET\\"
+    if @resource[:sixtyfourbit]
+      commands :winsvc => "#{basedir}Framework64\\v#{@resource[:dotnetversion]}\\installutil.exe"
     else
-      winsvc_cmd = "#{Dir::WINDOWS}\\Microsoft.NET\\Framework\\v4.0.30319\\installutil.exe""
+      commands :winsvc => "#{basedir}Framework\\v#{@resource[:dotnetversion]}\\installutil.exe"
     end
 
-      output = execute([winsvc_cmd, "#{resource[:name]}")
-
+    output = execute([winsvc_cmd, "#{resource[:name]}")
     raise Puppet::Error, "Unexpected exitcode: #{$?.exitstatus}\nError:#{output}" unless resource[:exitcode].include? $?.exitstatus
   end
 
   def destroy
-    winsvc '/u', "#{resource[:name]}"
+    winsvc '/u', "#{@resource[:name]}"
   end
 
   def currentstate
-    service = sc 'query', '| findstr /R',"#{resource[:name]}"
+    service = sc 'query', '| findstr /R',"#{@resource[:name]}"
     service =~ /^SERVICENAME: (\w+)/
     $1
   end
